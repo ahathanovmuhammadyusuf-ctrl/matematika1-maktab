@@ -1,0 +1,6 @@
+{
+  "name": "Matematika 7-sinf",
+  "description": "7-sinf o‘quvchilari uchun zamonaviy matematika ta'lim platformasi: mavzular, interaktiv masalalar, testlar, aqlli kalkulyator va bosqichma-bosqich AI yordamchisi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

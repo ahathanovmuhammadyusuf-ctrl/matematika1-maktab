@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --app-font-scale: 1rem;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  html.text-size-sm {
+    font-size: 14px;
+  }
+  html.text-size-normal {
+    font-size: 16px;
+  }
+  html.text-size-lg {
+    font-size: 18px;
+  }
+  html.text-size-xl {
+    font-size: 20px;
+  }
+
+  body {
+    transition: background-color 0.2s ease, color 0.2s ease;
+    background-color: #f8fafc;
+    color: #1e293b;
+  }
+
+  html.dark body,
+  body.dark {
+    background-color: #020617 !important;
+    color: #f8fafc !important;
+  }
+}
+
+/* Floating math animations */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-16px) rotate(6deg);
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(14px) rotate(-6deg);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: floatReverse 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-float-reverse {
+    animation: none;
+  }
+}
