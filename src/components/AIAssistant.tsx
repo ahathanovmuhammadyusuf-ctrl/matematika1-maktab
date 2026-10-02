@@ -41,19 +41,123 @@ export const AIAssistant: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Serverdan javob olishda xatolik yuz berdi.');
+        throw new Error('Serverdan javob olinmadi');
       }
 
       const data: AISolveResult = await response.json();
       setResult(data);
     } catch (err: any) {
-      setError(
-        'Savolni yechishda aloqa uzildi. Iltimos, internet aloqasini tekshiring yoki savolni qayta yuboring.'
-      );
+      // Client-side fallback solver for 7th-grade math questions
+      const local = solveLocallyInBrowser(textToSubmit);
+      if (local) {
+        setResult(local);
+      } else {
+        setError(
+          'Savolni yechishda aloqa uzildi. Iltimos, internet aloqasini tekshiring yoki savolni qayta yuboring.'
+        );
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  function solveLocallyInBrowser(raw: string): AISolveResult | null {
+    const q = raw.trim();
+    // Linear equations e.g. 2x + 5 = 17
+    const eqMatch = q.match(/^([+-]?\s*\d*\.?\d*)\s*([a-zA-Z])\s*([+-]\s*\d+\.?\d*)?\s*=\s*([+-]?\s*\d*\.?\d*)\s*([a-zA-Z])?\s*([+-]\s*\d+\.?\d*)?$/);
+    if (eqMatch) {
+      const varName = eqMatch[2] || eqMatch[5] || 'x';
+      let a1Str = (eqMatch[1] || '').replace(/\s+/g, '');
+      let a1 = a1Str === '' || a1Str === '+' ? 1 : a1Str === '-' ? -1 : parseFloat(a1Str) || 0;
+      let b1 = parseFloat((eqMatch[3] || '').replace(/\s+/g, '')) || 0;
+      let a2Str = (eqMatch[4] || '').replace(/\s+/g, '');
+      let a2 = 0;
+      let b2 = 0;
+      if (eqMatch[5]) {
+        a2 = a2Str === '' || a2Str === '+' ? 1 : a2Str === '-' ? -1 : parseFloat(a2Str) || 0;
+        b2 = parseFloat((eqMatch[6] || '').replace(/\s+/g, '')) || 0;
+      } else {
+        b2 = parseFloat(a2Str) || 0;
+      }
+      const netA = a1 - a2;
+      const netB = b2 - b1;
+      if (netA !== 0) {
+        const sol = netB / netA;
+        const formatted = Number.isInteger(sol) ? sol.toString() : sol.toFixed(2);
+        return {
+          success: true,
+          question: q,
+          category: 'Chiziqli tenglama',
+          steps: [
+            `1. Berilgan tenglama: ${q}`,
+            `2. Hadlarni guruhlaymiz: ${netA}${varName} = ${netB}`,
+            `3. Ikkala tomonni ${netA} ga bo'lamiz: ${varName} = ${netB} ÷ ${netA}`,
+            `4. Natija: ${varName} = ${formatted}`,
+          ],
+          answer: `${varName} = ${formatted}`,
+          tips: "Ozod sonlar qarama-qarshi ishora bilan o'ng tomonga o'tadi.",
+        };
+      }
+    }
+
+    // Fractions e.g. 3/4 + 2/5
+    const fracMatch = q.match(/^(\d+)\/(\d+)\s*([\+\-\*\/])\s*(\d+)\/(\d+)$/);
+    if (fracMatch) {
+      const num1 = parseInt(fracMatch[1], 10);
+      const den1 = parseInt(fracMatch[2], 10);
+      const op = fracMatch[3];
+      const num2 = parseInt(fracMatch[4], 10);
+      const den2 = parseInt(fracMatch[5], 10);
+      const gcd = (x: number, y: number): number => (!y ? Math.abs(x) : gcd(y, x % y));
+      const lcm = (x: number, y: number): number => Math.abs(x * y) / gcd(x, y);
+
+      if (op === '+' || op === '-') {
+        const commonDen = lcm(den1, den2);
+        const f1 = commonDen / den1;
+        const f2 = commonDen / den2;
+        const resNum = op === '+' ? num1 * f1 + num2 * f2 : num1 * f1 - num2 * f2;
+        const g = gcd(resNum, commonDen);
+        const finNum = resNum / g;
+        const finDen = commonDen / g;
+        return {
+          success: true,
+          question: q,
+          category: 'Oddiy kasrlar',
+          steps: [
+            `1. Berilgan ifoda: ${num1}/${den1} ${op} ${num2}/${den2}`,
+            `2. Umumiy maxraj: EKUK(${den1}, ${den2}) = ${commonDen}`,
+            `3. Hisoblash: (${num1 * f1} ${op} ${num2 * f2}) / ${commonDen} = ${resNum}/${commonDen}`,
+            g > 1 ? `4. Qisqartirilgan shakli: ${finNum}/${finDen}` : `4. Kasr qisqarmas shaklda: ${finNum}/${finDen}`,
+          ],
+          answer: finDen === 1 ? `${finNum}` : `${finNum}/${finDen}`,
+          tips: "Kasrlarni qo'shish va ayirishda har doim umumiy maxraj topiladi.",
+        };
+      }
+    }
+
+    // Percentages e.g. 150 ning 20% i
+    const pctMatch = q.match(/(\d+\.?\d*)\s*(?:ning)?\s*(\d+\.?\d*)\s*%/i) || q.match(/(\d+\.?\d*)\s*%\s*(?:of|ning)?\s*(\d+\.?\d*)/i);
+    if (pctMatch) {
+      const total = parseFloat(pctMatch[1]);
+      const pct = parseFloat(pctMatch[2]);
+      const val = (total * pct) / 100;
+      const formatted = Number.isInteger(val) ? val.toString() : val.toFixed(2);
+      return {
+        success: true,
+        question: q,
+        category: 'Foizlar',
+        steps: [
+          `1. Berilgan: Son = ${total}, Foiz = ${pct}%`,
+          `2. Formula: (Son × Foiz) ÷ 100`,
+          `3. Hisoblash: (${total} × ${pct}) ÷ 100 = ${formatted}`,
+        ],
+        answer: `${formatted}`,
+        tips: "Sonning foizini topish uchun son foizga ko'paytirilib, 100 ga bo'linadi.",
+      };
+    }
+
+    return null;
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
